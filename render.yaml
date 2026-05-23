@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: devcollab
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: DB_HOST
+        fromDatabase:
+          name: devcollab-db
+          property: host
+      - key: DB_USER
+        fromDatabase:
+          name: devcollab-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: devcollab-db
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: devcollab-db
+          property: database
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRY
+        value: 7d
+      - key: BCRYPT_ROUNDS
+        value: 10
+      - key: NODE_ENV
+        value: production
+
+databases:
+  - name: devcollab-db
+    plan: free
