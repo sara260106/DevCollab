@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile — DevCollab ✦</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header class="header">
+    <div class="container">
+        <a href="/" class="logo">DevCollab<span class="logo-star">✦</span></a>
+        <nav class="nav">
+            <a href="/browse.html">Browse</a>
+            <a href="/dashboard.html" id="dashboardLink">Dashboard</a>
+            <a href="/login.html" id="authLink" class="btn btn-outline">Log in</a>
+        </nav>
+    </div>
+</header>
+
+<main>
+    <div class="container" id="profileContainer">
+        <div style="text-align: center; padding: 60px 0;">
+            <p>☁️ Loading profile...</p>
+        </div>
+    </div>
+</main>
+
+<footer class="footer">
+    <div class="container">
+        <p>✦ Build in public. Grow together. ✦</p>
+    </div>
+</footer>
+
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const userId = urlParams.get('id');
+    const token = localStorage.getItem('token');
+    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+    
+    // Update nav
+    const dashboardLink = document.getElementById('dashboardLink');
+    const authLink = document.getElementById('authLink');
+    
+    if (token && currentUser.id) {
+        if (dashboardLink) dashboardLink.style.display = 'inline-block';
+        if (authLink) {
+            authLink.textContent = 'Log out';
+            authLink.href = '#';
+            authLink.onclick = (e) => {
+                e.preventDefault();
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                window.location.href = '/';
+            };
+        }
+    } else {
+        if (dashboardLink) dashboardLink.style.display = 'none';
+        if (authLink) {
+            authLink.textContent = 'Log in';
+            authLink.href = '/login.html';
+        }
+    }
+    
+    async function loadProfile() {
+        const container = document.getElementById('profileContainer');
+        
+        try {
+            const response = await fetch(`/api/users/${userId || currentUser.id}`);
+            const userData = await response.json();
+            
+            if (response.ok) {
+                const isOwnProfile = (userId && parseInt(userId) === currentUser.id) || (!userId && currentUser.id);
+                
+                container.innerHTML = `
+                    <div style="max-width: 700px; margin: 40px auto;">
+                        <div style="background: white; border-radius: 48px; padding: 48px; box-shadow: var(--shadow-md); border: 1px solid var(--border-soft); text-align: center;">
+                            <div style="width: 100px; height: 100px; background: var(--pastel-pink); border-radius: 50%; margin: 0 auto 24px; display: flex; align-items: center; justify-content: center; font-size: 48px;">
+                                ${userData.name ? userData.name.charAt(0).toUpperCase() : '👤'}
+                            </div>
+                            
+                            <h1 style="font-size: 36px; margin-bottom: 8px;">${escapeHtml(userData.name)}</h1>
+                            <p style="color: var(--text-light); margin-bottom: 24px;">${escapeHtml(userData.email)}</p>
+                            
+                            ${userData.bio ? `<p style="margin: 24px 0; line-height: 1.6; color: var(--text-soft);">${escapeHtml(userData.bio)}</p>` : '<p style="color: var(--text-light); margin: 24px 0;">✨ No bio yet</p>'}
+                            
+                            <div class="tech-tags" style="justify-content: center; margin: 24px 0;">
+                                ${userData.skills?.length > 0 
+                                    ? userData.skills.map(skill => `<span class="tag">#${escapeHtml(skill)}</span>`).join('')
+                                    : '<span class="tag">#developer</span>'}
+                            </div>
+                            
+                            <div style="display: flex; gap: 16px; justify-content: center; margin: 32px 0;">
+                                ${userData.github_url ? `<a href="${userData.github_url}" target="_blank" class="btn btn-outline">🐙 GitHub</a>` : ''}
+                                ${userData.linkedin_url ? `<a href="${userData.linkedin_url}" target="_blank" class="btn btn-outline">🔗 LinkedIn</a>` : ''}
+                            </div>
+                            
+                            <div style="background: var(--cream); padding: 20px; border-radius: 32px; margin-top: 24px;">
+                                <span>⭐ Reputation: ${userData.reputation_score || 0} points</span>
+                            </div>
+                            
+                            ${isOwnProfile && !userId ? `
+                                <div style="margin-top: 32px;">
+                                    <button id="editProfileBtn" class="btn btn-primary">✏️ Edit profile</button>
+                                </div>
+                            ` : ''}
+                        </div>
+                        
+                        ${userData.recentProjects?.length > 0 ? `
+                            <div style="margin-top: 48px;">
+                                <h2 style="font-size: 28px; margin-bottom: 24px;">📋 Recent projects</h2>
+                                <div class="project-grid">
+                                    ${userData.recentProjects.map(project => `
+                                        <div class="project-card" onclick="window.location.href='/project.html?id=${project.id}'">
+                                            <h3 class="project-title">${escapeHtml(project.title)}</h3>
+                                            <div class="project-meta">
+                                                <span>Status: ${project.status}</span>
+                                                <span style="color: var(--pastel-pink-dark);">View →</span>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+                
+                if (isOwnProfile && !userId) {
+                    const editBtn = document.getElementById('editProfileBtn');
+                    if (editBtn) {
+                        editBtn.addEventListener('click', showEditModal);
+                    }
+                }
+            } else {
+                container.innerHTML = `
+                    <div class="empty-state" style="margin: 60px auto; max-width: 500px;">
+                        <p>☁️ User not found</p>
+                        <a href="/browse.html" class="btn btn-primary">Browse projects</a>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            container.innerHTML = `<div class="empty-state"><p>☁️ Failed to load profile</p></div>`;
+        }
+    }
+    
+    function showEditModal() {
+        // Simple edit modal
+        const newBio = prompt('Enter your bio:');
+        if (newBio !== null) {
+            updateProfile({ bio: newBio });
+        }
+    }
+    
+    async function updateProfile(updates) {
+        try {
+            const response = await fetch(`/api/users/${currentUser.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(updates)
+            });
+            
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                alert('Failed to update profile');
+            }
+        } catch (error) {
+            alert('Something went wrong');
+        }
+    }
+    
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+    
+    loadProfile();
+</script>
+
+</body>
+</html>

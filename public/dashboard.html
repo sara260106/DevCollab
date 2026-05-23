@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard — DevCollab ✦</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header class="header">
+    <div class="container">
+        <a href="/" class="logo">DevCollab<span class="logo-star">✦</span></a>
+        <nav class="nav">
+            <a href="/browse.html">Browse</a>
+            <a href="/dashboard.html" style="color: var(--pastel-pink-dark);">Dashboard</a>
+            <a href="#" id="logoutLink" class="btn btn-outline">Log out</a>
+        </nav>
+    </div>
+</header>
+
+<main>
+    <div class="container">
+        <!-- Welcome Section -->
+        <div class="hero" style="padding: 40px 0 20px; background: none;">
+            <h1 style="font-size: 40px;">Welcome back, <span id="userName" class="squiggle">Developer</span> ✦</h1>
+            <p class="subhead" style="font-size: 18px;">Your little corner of the coding universe</p>
+        </div>
+
+        <!-- Quick Action Buttons -->
+        <div style="display: flex; gap: 16px; justify-content: center; margin: 24px 0 40px; flex-wrap: wrap;">
+            <button id="showCreateProjectBtn" class="btn btn-primary" style="padding: 12px 28px;">✨ Post a new project</button>
+            <button id="viewProfileBtn" class="btn btn-outline">👤 View my profile</button>
+        </div>
+
+        <!-- Create Project Modal (hidden by default) -->
+        <div id="createProjectModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center;">
+            <div style="background: white; max-width: 550px; margin: 60px auto; border-radius: 40px; padding: 40px; max-height: 85vh; overflow-y: auto;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="font-size: 28px;">✨ New project</h2>
+                    <button id="closeModalBtn" style="background: none; border: none; font-size: 28px; cursor: pointer; color: var(--text-light);">&times;</button>
+                </div>
+                <div id="projectAlert" style="display: none;"></div>
+                <form id="createProjectForm">
+                    <div class="form-group">
+                        <label>Project title</label>
+                        <input type="text" id="projectTitle" required placeholder="e.g., AI-powered todo app">
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea id="projectDesc" rows="5" required placeholder="What are you building? What skills do you need?"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Tech stack (comma separated)</label>
+                        <input type="text" id="projectSkills" placeholder="React, Node, Python, SQL...">
+                    </div>
+                    <div class="form-group">
+                        <label>Collaborators needed</label>
+                        <select id="collaboratorsNeeded">
+                            <option value="1">1 collaborator</option>
+                            <option value="2">2 collaborators</option>
+                            <option value="3">3 collaborators</option>
+                            <option value="4">4 collaborators</option>
+                            <option value="5">5 collaborators</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">🚀 Post project</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div style="border-bottom: 2px solid var(--border-soft); margin-bottom: 32px; display: flex; gap: 32px;">
+            <button id="myProjectsTab" class="tab-btn active" style="background: none; border: none; padding: 12px 0; font-size: 16px; font-weight: 600; cursor: pointer; border-bottom: 3px solid var(--pastel-pink); color: var(--text-dark);">📋 My projects</button>
+            <button id="joinedProjectsTab" class="tab-btn" style="background: none; border: none; padding: 12px 0; font-size: 16px; font-weight: 500; cursor: pointer; color: var(--text-light);">🤝 Joined projects</button>
+            <button id="requestsTab" class="tab-btn" style="background: none; border: none; padding: 12px 0; font-size: 16px; font-weight: 500; cursor: pointer; color: var(--text-light);">📬 Requests <span id="requestBadge" style="background: var(--pastel-pink); padding: 2px 8px; border-radius: 20px; font-size: 12px; margin-left: 6px; display: none;">0</span></button>
+        </div>
+
+        <!-- My Projects Section -->
+        <div id="myProjectsSection">
+            <div class="project-grid" id="myProjectsGrid">
+                <div class="empty-state"><p>☁️ Loading your projects...</p></div>
+            </div>
+        </div>
+
+        <!-- Joined Projects Section (hidden) -->
+        <div id="joinedProjectsSection" style="display: none;">
+            <div class="project-grid" id="joinedProjectsGrid">
+                <div class="empty-state"><p>☁️ Loading joined projects...</p></div>
+            </div>
+        </div>
+
+        <!-- Requests Section (hidden) -->
+        <div id="requestsSection" style="display: none;">
+            <div id="requestsList"></div>
+        </div>
+    </div>
+</main>
+
+<footer class="footer">
+    <div class="container">
+        <p>✦ Building together, one commit at a time ✦</p>
+    </div>
+</footer>
+
+<script>
+    const token = localStorage.getItem('token');
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+    // Redirect if not logged in
+    if (!token) {
+        window.location.href = '/login.html';
+    }
+
+    // Set user name
+    document.getElementById('userName').textContent = user.name || 'Developer';
+
+    // Logout
+    document.getElementById('logoutLink').addEventListener('click', (e) => {
+        e.preventDefault();
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/';
+    });
+
+    // Tab switching
+    const myProjectsTab = document.getElementById('myProjectsTab');
+    const joinedProjectsTab = document.getElementById('joinedProjectsTab');
+    const requestsTab = document.getElementById('requestsTab');
+    const myProjectsSection = document.getElementById('myProjectsSection');
+    const joinedProjectsSection = document.getElementById('joinedProjectsSection');
+    const requestsSection = document.getElementById('requestsSection');
+
+    function setActiveTab(active) {
+        [myProjectsTab, joinedProjectsTab, requestsTab].forEach(tab => {
+            tab.style.color = 'var(--text-light)';
+            tab.style.borderBottom = 'none';
+            tab.style.fontWeight = '500';
+        });
+        active.style.color = 'var(--text-dark)';
+        active.style.borderBottom = '3px solid var(--pastel-pink)';
+        active.style.fontWeight = '600';
+    }
+
+    myProjectsTab.addEventListener('click', () => {
+        setActiveTab(myProjectsTab);
+        myProjectsSection.style.display = 'block';
+        joinedProjectsSection.style.display = 'none';
+        requestsSection.style.display = 'none';
+        loadMyProjects();
+    });
+
+    joinedProjectsTab.addEventListener('click', () => {
+        setActiveTab(joinedProjectsTab);
+        myProjectsSection.style.display = 'none';
+        joinedProjectsSection.style.display = 'block';
+        requestsSection.style.display = 'none';
+        loadJoinedProjects();
+    });
+
+    requestsTab.addEventListener('click', () => {
+        setActiveTab(requestsTab);
+        myProjectsSection.style.display = 'none';
+        joinedProjectsSection.style.display = 'none';
+        requestsSection.style.display = 'block';
+        loadRequests();
+    });
+
+    // Modal handling
+    const modal = document.getElementById('createProjectModal');
+    const showBtn = document.getElementById('showCreateProjectBtn');
+    const closeBtn = document.getElementById('closeModalBtn');
+    const viewProfileBtn = document.getElementById('viewProfileBtn');
+
+    showBtn.addEventListener('click', () => {
+        modal.style.display = 'flex';
+    });
+
+    closeBtn.addEventListener('click', () => {
+        modal.style.display = 'none';
+    });
+
+    viewProfileBtn.addEventListener('click', () => {
+        window.location.href = `/profile.html?id=${user.id}`;
+    });
+
+    window.addEventListener('click', (e) => {
+        if (e.target === modal) modal.style.display = 'none';
+    });
+
+    // Create project form
+    const createForm = document.getElementById('createProjectForm');
+    const projectAlert = document.getElementById('projectAlert');
+
+    createForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const title = document.getElementById('projectTitle').value;
+        const description = document.getElementById('projectDesc').value;
+        const skillsInput = document.getElementById('projectSkills').value;
+        const collaborators_needed = parseInt(document.getElementById('collaboratorsNeeded').value);
+        
+        const skills = skillsInput ? skillsInput.split(',').map(s => s.trim()) : [];
+        
+        try {
+            const response = await fetch('/api/projects', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ title, description, skills, collaborators_needed })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                projectAlert.style.display = 'block';
+                projectAlert.className = 'alert alert-success';
+                projectAlert.textContent = '✨ Project created successfully!';
+                modal.style.display = 'none';
+                createForm.reset();
+                loadMyProjects();
+                setTimeout(() => {
+                    projectAlert.style.display = 'none';
+                }, 3000);
+            } else {
+                projectAlert.style.display = 'block';
+                projectAlert.className = 'alert alert-error';
+                projectAlert.textContent = data.error || 'Failed to create project';
+            }
+        } catch (error) {
+            projectAlert.style.display = 'block';
+            projectAlert.className = 'alert alert-error';
+            projectAlert.textContent = 'Something went wrong';
+        }
+    });
+
+    // Load my projects
+    async function loadMyProjects() {
+        const grid = document.getElementById('myProjectsGrid');
+        grid.innerHTML = '<div class="empty-state"><p>☁️ Loading...</p></div>';
+        
+        try {
+            const response = await fetch('/api/projects', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
+            
+            const myProjects = data.projects?.filter(p => p.owner_id === user.id) || [];
+            
+            if (myProjects.length === 0) {
+                grid.innerHTML = `
+                    <div class="empty-state">
+                        <p>✨ You haven't posted any projects yet.</p>
+                        <button id="emptyStateCreateBtn" class="btn btn-primary" style="margin-top: 16px;">Post your first project</button>
+                    </div>
+                `;
+                const emptyBtn = document.getElementById('emptyStateCreateBtn');
+                if (emptyBtn) emptyBtn.addEventListener('click', () => showBtn.click());
+                return;
+            }
+            
+            grid.innerHTML = myProjects.map(project => `
+                <div class="project-card" onclick="window.location.href='/project.html?id=${project.id}'">
+                    <h3 class="project-title">${escapeHtml(project.title)}</h3>
+                    <p class="project-desc">${escapeHtml(project.description.substring(0, 100))}...</p>
+                    <div class="tech-tags">
+                        ${project.skills?.map(skill => `<span class="tag">#${escapeHtml(skill)}</span>`).join('') || '<span class="tag">#coding</span>'}
+                    </div>
+                    <div class="project-meta">
+                        <span>👥 Needs ${project.collaborators_needed}</span>
+                        <span class="tag" style="background: ${project.status === 'open' ? 'var(--pastel-green)' : 'var(--pastel-yellow)'}">${project.status}</span>
+                    </div>
+                </div>
+            `).join('');
+        } catch (error) {
+            grid.innerHTML = '<div class="empty-state"><p>☁️ Trouble loading projects</p></div>';
+        }
+    }
+
+    // Load joined projects
+    async function loadJoinedProjects() {
+        const grid = document.getElementById('joinedProjectsGrid');
+        grid.innerHTML = '<div class="empty-state"><p>☁️ Loading...</p></div>';
+        
+        try {
+            const response = await fetch('/api/projects');
+            const data = await response.json();
+            
+            // This is simplified - in real app, you'd have an endpoint for joined projects
+            grid.innerHTML = `
+                <div class="empty-state">
+                    <p>🤝 Projects you've joined will appear here.</p>
+                    <a href="/browse.html" class="btn btn-primary" style="margin-top: 16px;">Browse projects to join</a>
+                </div>
+            `;
+        } catch (error) {
+            grid.innerHTML = '<div class="empty-state"><p>☁️ Trouble loading</p></div>';
+        }
+    }
+
+    // Load requests
+    async function loadRequests() {
+        const container = document.getElementById('requestsList');
+        container.innerHTML = '<div class="empty-state"><p>☁️ Loading requests...</p></div>';
+        
+        // Simplified for now
+        container.innerHTML = `
+            <div class="empty-state">
+                <p>📬 When someone requests to join your project, you'll see it here.</p>
+            </div>
+        `;
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    // Initial load
+    loadMyProjects();
+</script>
+
+<style>
+    .tab-btn {
+        transition: all 0.2s ease;
+    }
+    .tab-btn:hover {
+        color: var(--pastel-pink-dark);
+    }
+</style>
+
+</body>
+</html>

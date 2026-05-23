@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browse projects — DevCollab</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header class="header">
+    <div class="container">
+        <a href="/" class="logo">DevCollab<span class="logo-star">✦</span></a>
+        <nav class="nav">
+            <a href="/browse.html">Browse</a>
+            <a href="/dashboard.html" id="dashboardLink">Dashboard</a>
+            <a href="/login.html" id="authLink" class="btn btn-outline">Log in</a>
+        </nav>
+    </div>
+</header>
+
+<main>
+    <div class="container">
+        <div class="section-header">
+            <h2>Browse projects ✦</h2>
+            <p>Find your next collaboration</p>
+        </div>
+
+        <!-- Search and Filter Bar -->
+        <div style="margin: 24px 0; display: flex; gap: 16px; flex-wrap: wrap; justify-content: center;">
+            <input type="text" id="searchInput" placeholder="Search by title or skill..." style="padding: 12px 20px; border-radius: 40px; border: 1.5px solid var(--border-soft); width: 300px; font-family: inherit;">
+            <select id="skillFilter" style="padding: 12px 20px; border-radius: 40px; border: 1.5px solid var(--border-soft); background: white;">
+                <option value="">All skills</option>
+                <option value="React">React</option>
+                <option value="Node">Node.js</option>
+                <option value="Python">Python</option>
+                <option value="SQL">SQL</option>
+                <option value="JavaScript">JavaScript</option>
+                <option value="HTML/CSS">HTML/CSS</option>
+            </select>
+        </div>
+
+        <div class="project-grid" id="projectsGrid">
+            <div class="empty-state">
+                <p>☁️ Loading projects...</p>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin: 40px 0;">
+            <button id="loadMoreBtn" class="btn btn-outline" style="display: none;">Load more ✨</button>
+        </div>
+    </div>
+</footer>
+
+<script>
+    let currentPage = 1;
+    let currentSkill = '';
+    let currentSearch = '';
+    let isLoading = false;
+    let hasMore = true;
+
+    const token = localStorage.getItem('token');
+    
+    // Update nav based on login status
+    const dashboardLink = document.getElementById('dashboardLink');
+    const authLink = document.getElementById('authLink');
+    
+    if (token) {
+        if (dashboardLink) dashboardLink.style.display = 'inline-block';
+        if (authLink) {
+            authLink.textContent = 'Log out';
+            authLink.href = '#';
+            authLink.onclick = (e) => {
+                e.preventDefault();
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                window.location.href = '/';
+            };
+        }
+    } else {
+        if (dashboardLink) dashboardLink.style.display = 'none';
+        if (authLink) {
+            authLink.textContent = 'Log in';
+            authLink.href = '/login.html';
+        }
+    }
+
+    async function loadProjects(reset = true) {
+        if (isLoading) return;
+        if (reset) {
+            currentPage = 1;
+            hasMore = true;
+            document.getElementById('projectsGrid').innerHTML = '<div class="empty-state"><p>☁️ Loading projects...</p></div>';
+        }
+        if (!hasMore && !reset) return;
+        
+        isLoading = true;
+        
+        try {
+            let url = `/api/projects?limit=9&offset=${(currentPage - 1) * 9}`;
+            if (currentSkill) url += `&skill=${encodeURIComponent(currentSkill)}`;
+            
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            const grid = document.getElementById('projectsGrid');
+            
+            if (reset) {
+                grid.innerHTML = '';
+            }
+            
+            if (data.projects && data.projects.length > 0) {
+                data.projects.forEach(project => {
+                    const card = document.createElement('div');
+                    card.className = 'project-card';
+                    card.onclick = () => window.location.href = `/project.html?id=${project.id}`;
+                    card.innerHTML = `
+                        <h3 class="project-title">${escapeHtml(project.title)}</h3>
+                        <p class="project-desc">${escapeHtml(project.description.substring(0, 120))}${project.description.length > 120 ? '...' : ''}</p>
+                        <div class="tech-tags">
+                            ${project.skills && project.skills.length > 0 
+                                ? project.skills.map(skill => `<span class="tag">#${escapeHtml(skill)}</span>`).join('') 
+                                : '<span class="tag">#coding</span>'}
+                        </div>
+                        <div class="project-meta">
+                            <span>👥 Needs ${project.collaborators_needed}</span>
+                            <span style="color: #F5C4C4;">View →</span>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+                
+                hasMore = data.projects.length === 9;
+                currentPage++;
+                
+                const loadMoreBtn = document.getElementById('loadMoreBtn');
+                if (loadMoreBtn) {
+                    loadMoreBtn.style.display = hasMore ? 'inline-block' : 'none';
+                }
+            } else if (reset) {
+                grid.innerHTML = `
+                    <div class="empty-state">
+                        <p>✨ No projects found. Be the first to post one!</p>
+                        ${token ? '<a href="/dashboard.html" class="btn btn-primary" style="margin-top: 16px;">Post a project</a>' : '<a href="/login.html" class="btn btn-primary" style="margin-top: 16px;">Log in to post</a>'}
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Error loading projects:', error);
+            document.getElementById('projectsGrid').innerHTML = `
+                <div class="empty-state">
+                    <p>☁️ Trouble loading projects. Make sure server is running.</p>
+                </div>
+            `;
+        } finally {
+            isLoading = false;
+        }
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    // Search and filter
+    const searchInput = document.getElementById('searchInput');
+    const skillFilter = document.getElementById('skillFilter');
+    
+    searchInput.addEventListener('input', () => {
+        currentSearch = searchInput.value;
+        // For now just filter client-side (you can add server-side later)
+        filterProjectsClientSide();
+    });
+    
+    skillFilter.addEventListener('change', () => {
+        currentSkill = skillFilter.value;
+        loadProjects(true);
+    });
+    
+    function filterProjectsClientSide() {
+        const cards = document.querySelectorAll('.project-card');
+        const searchTerm = currentSearch.toLowerCase();
+        
+        cards.forEach(card => {
+            const title = card.querySelector('.project-title')?.textContent.toLowerCase() || '';
+            const tags = Array.from(card.querySelectorAll('.tag')).map(t => t.textContent.toLowerCase());
+            const matches = title.includes(searchTerm) || tags.some(t => t.includes(searchTerm));
+            card.style.display = matches ? 'block' : 'none';
+        });
+    }
+    
+    // Load more button
+    const loadMoreBtn = document.getElementById('loadMoreBtn');
+    if (loadMoreBtn) {
+        loadMoreBtn.addEventListener('click', () => loadProjects(false));
+    }
+    
+    // Initial load
+    loadProjects(true);
+</script>
+
+</body>
+</html>

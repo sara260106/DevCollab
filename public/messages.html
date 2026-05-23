@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Messages — DevCollab ✦</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header class="header">
+    <div class="container">
+        <a href="/" class="logo">DevCollab<span class="logo-star">✦</span></a>
+        <nav class="nav">
+            <a href="/browse.html">Browse</a>
+            <a href="/dashboard.html">Dashboard</a>
+            <a href="#" id="logoutLink" class="btn btn-outline">Log out</a>
+        </nav>
+    </div>
+</header>
+
+<main>
+    <div class="container">
+        <div class="section-header">
+            <h2>Messages ✦</h2>
+            <p>Chat with your collaborators</p>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 300px 1fr; gap: 24px; min-height: 500px; background: white; border-radius: 32px; border: 1px solid var(--border-soft); overflow: hidden;">
+            <!-- Conversations List -->
+            <div style="border-right: 1px solid var(--border-soft); background: var(--cream);">
+                <div style="padding: 20px; border-bottom: 1px solid var(--border-soft);">
+                    <h3 style="font-size: 18px;">Conversations</h3>
+                </div>
+                <div id="conversationsList" style="overflow-y: auto; max-height: 500px;">
+                    <div style="padding: 40px; text-align: center; color: var(--text-light);">
+                        ☁️ No conversations yet<br>
+                        <span style="font-size: 13px;">Join a project to start chatting</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Chat Area -->
+            <div style="display: flex; flex-direction: column;">
+                <div id="chatHeader" style="padding: 20px; border-bottom: 1px solid var(--border-soft); background: white;">
+                    <p style="color: var(--text-light);">Select a conversation to start messaging</p>
+                </div>
+                <div id="messagesArea" style="flex: 1; overflow-y: auto; padding: 20px; min-height: 400px; display: flex; flex-direction: column; gap: 12px;">
+                    <div style="text-align: center; color: var(--text-light); padding: 60px 20px;">
+                        ✨ Pick a conversation from the left
+                    </div>
+                </div>
+                <div id="messageInputArea" style="padding: 20px; border-top: 1px solid var(--border-soft); background: white; display: none;">
+                    <div style="display: flex; gap: 12px;">
+                        <input type="text" id="messageInput" placeholder="Type your message..." style="flex: 1; padding: 12px 18px; border: 1.5px solid var(--border-soft); border-radius: 40px; font-family: inherit;">
+                        <button id="sendMessageBtn" class="btn btn-primary" style="padding: 12px 24px;">Send ✨</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<footer class="footer">
+    <div class="container">
+        <p>✦ Talk code, build together ✦</p>
+    </div>
+</footer>
+
+<script>
+    const token = localStorage.getItem('token');
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    
+    if (!token) {
+        window.location.href = '/login.html';
+    }
+    
+    // Logout
+    document.getElementById('logoutLink').addEventListener('click', (e) => {
+        e.preventDefault();
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/';
+    });
+    
+    let currentConversation = null;
+    
+    // Mock conversations for now (you can expand this later)
+    const conversationsList = document.getElementById('conversationsList');
+    const chatHeader = document.getElementById('chatHeader');
+    const messagesArea = document.getElementById('messagesArea');
+    const messageInputArea = document.getElementById('messageInputArea');
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendMessageBtn');
+    
+    conversationsList.innerHTML = `
+        <div style="padding: 40px; text-align: center; color: var(--text-light);">
+            🤝 Messages appear here when you<br>collaborate with someone on a project.
+            <div style="margin-top: 20px;">
+                <a href="/browse.html" class="btn btn-outline" style="font-size: 13px;">Browse projects →</a>
+            </div>
+        </div>
+    `;
+    
+    sendBtn.addEventListener('click', () => {
+        const content = messageInput.value.trim();
+        if (content && currentConversation) {
+            // Add message to UI (mock)
+            const messageDiv = document.createElement('div');
+            messageDiv.style.display = 'flex';
+            messageDiv.style.justifyContent = 'flex-end';
+            messageDiv.innerHTML = `
+                <div style="background: var(--pastel-pink); padding: 10px 16px; border-radius: 20px; max-width: 70%;">
+                    ${escapeHtml(content)}
+                </div>
+            `;
+            messagesArea.appendChild(messageDiv);
+            messageInput.value = '';
+            messagesArea.scrollTop = messagesArea.scrollHeight;
+        }
+    });
+    
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+</script>
+
+</body>
+</html>
